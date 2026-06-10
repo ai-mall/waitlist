@@ -16,7 +16,9 @@ async function handleWaitlist(request, env) {
   if (request.method !== 'POST') {
     return json({ error: 'method_not_allowed' }, 405);
   }
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  const supabaseUrl = (env.SUPABASE_URL || '').trim().replace(/\/$/, '');
+  const serviceKey = (env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!supabaseUrl || !serviceKey) {
     return json({ error: 'server_not_configured' }, 500);
   }
 
@@ -35,11 +37,11 @@ async function handleWaitlist(request, env) {
     return json({ error: 'invalid_email' }, 400);
   }
 
-  const res = await fetch(`${env.SUPABASE_URL}/rest/v1/waitlist_registrations`, {
+  const res = await fetch(`${supabaseUrl}/rest/v1/waitlist_registrations`, {
     method: 'POST',
     headers: {
-      apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
