@@ -869,8 +869,8 @@
   </div>
   <div class="wrap" style="text-align:center;position:relative;z-index:1">
     <div class="future-badge"><span class="future-dot"></span>AI MARKET GROWTH FORECAST</div>
-    <h2 class="sec reveal" style="color:#fff">日本のAI市場は、これから<br><span class="mkt-hl">30倍以上に爆発する。</span></h2>
-    <p class="sec-sub reveal" style="color:rgba(255,255,255,.6)">今この瞬間に乗り込んだ人だけが、波の頂点に立つことができる。</p>
+    <h2 class="sec reveal" style="color:#fff">国内AIシステム市場は、<br><span class="mkt-hl">2029年に約4.2兆円へ拡大する見通し。</span></h2>
+    <p class="sec-sub reveal" style="color:rgba(255,255,255,.6)">IDC Japanの予測では、2024年の約1.3兆円から年平均約26%で成長を続ける。</p>
     <div class="mkt-canvas-wrap reveal">
       <canvas id="market-canvas"></canvas>
     </div>
@@ -961,7 +961,7 @@
       <div class="sol-card reveal">
         <div class="sol-icon">🏪</div>
         <h3>誰でも5分で出品できる</h3>
-        <p>特商法表記・決済設定・LP制作——面倒な手続きはすべてAI BASEが代行。アカウント登録から出品完了まで、最短5分。プログラミング不要で、今日から売れる状態になります。</p>
+        <p>決済設定・LP制作——面倒な手続きはすべてAI BASEが代行。アカウント登録から出品完了まで、最短5分。プログラミング不要で、今日から売れる状態になります。</p>
       </div>
       <div class="sol-card reveal d1">
         <div class="sol-icon">⭐</div>
@@ -1221,7 +1221,7 @@
         それをAIに落とし込んで、必要な人に届ける。それだけでビジネスが成立します。
       </p>
       <p>
-        AI BASEはその"最後の壁"——特商法・決済・集客——をまるごと取り除きます。
+        AI BASEはその"最後の壁"——決済・集客——をまるごと取り除きます。
         <strong>あなたがやることは「作る」だけ。あとはAI BASEが売る仕組みをつくります。</strong>
       </p>
       <div class="who-steps">
@@ -1387,7 +1387,7 @@
         <div class="phase-period">2026年 ローンチ予定</div>
         <ul class="phase-list">
           <li>AIツール・プロンプト・自動化フローを個人が簡単に出品・販売</li>
-          <li>特商法対応・決済・LP生成をプラットフォームが全て代行</li>
+          <li>決済・LP生成をプラットフォームが代行</li>
           <li>購入前デモで「使えるかどうか」を確認してから購入</li>
           <li>先行登録者限定の特典をウェイティングリスト登録者へ順次公開</li>
         </ul>
@@ -1698,14 +1698,14 @@
     const ctx = canvas.getContext('2d');
     const DPR = window.devicePixelRatio || 1;
     const data = [
-      {year:'2020', val:0.3,  label:'0.3兆円'},
-      {year:'2022', val:0.65, label:'0.65兆円'},
-      {year:'2024', val:1.4,  label:'1.4兆円'},
-      {year:'2026', val:3.0,  label:'3.0兆円', now:true},
-      {year:'2028', val:6.2,  label:'6.2兆円'},
-      {year:'2030', val:9.8,  label:'9.8兆円'},
+      {year:'2024', val:1.3,  label:'1.3兆円'},
+      {year:'2025', val:1.7,  label:'1.7兆円'},
+      {year:'2026', val:2.1,  label:'2.1兆円', now:true},
+      {year:'2027', val:2.7,  label:'2.7兆円'},
+      {year:'2028', val:3.3,  label:'3.3兆円'},
+      {year:'2029', val:4.2,  label:'4.2兆円'},
     ];
-    const MAX = 10, N = data.length;
+    const MAX = 5, N = data.length;
     let progress = 0, pulse = 0, started = false, raf2;
     let W, H, pad, cW, cH, p;
 
