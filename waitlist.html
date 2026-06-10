@@ -1815,42 +1815,16 @@
   <div class="wrap">
     <div style="text-align:center;margin-bottom:52px" class="reveal">
       <div class="tag orange">LIMITATION</div>
-      <p class="limit-num" id="remaining-count">—</p>
+      <p class="limit-num">300</p>
       <p class="limit-label">名限定 — 特典付き先行登録</p>
-      <div class="prog-bg"><div class="prog-fill" id="prog-fill-bar" style="width:0%"></div></div>
-      <p class="prog-note" id="prog-note-text">残り枠を確認中...</p>
     </div>
     <div class="form-card reveal">
       <div id="form-state">
         <div class="tag">ACTION</div>
         <h2>今すぐ登録して、<br>特典を受け取る</h2>
         <p class="form-sub">無料・1分で完了。リリース時に最速でご連絡します。</p>
-        <form id="wl-form">
-          <div class="f-grp"><label>お名前</label><input type="text" placeholder="山田 太郎" required></div>
-
-
-          <div class="f-grp">
-            <label>メールアドレス</label>
-            <input type="email" id="email-input" placeholder="your@email.com" required>
-          </div>
-
-          <div class="f-grp">
-            <label>登録の種別を選んでください</label>
-            <div class="radio-grp">
-              <label class="r-opt"><input type="radio" name="type" value="seller" required><div class="r-opt-b"><span class="r-opt-t">💼 出品者として登録</span><span class="r-opt-d">AIツールを販売・公開したい</span></div></label>
-              <label class="r-opt"><input type="radio" name="type" value="buyer"><div class="r-opt-b"><span class="r-opt-t">🛒 購入者として登録</span><span class="r-opt-d">AIツールを探して使いたい</span></div></label>
-              <label class="r-opt"><input type="radio" name="type" value="both"><div class="r-opt-b"><span class="r-opt-t">⚡ 両方</span><span class="r-opt-d">出品もするし、購入もしたい</span></div></label>
-              <label class="r-opt" style="border-color:#FDE68A;background:#FFFBEB"><input type="radio" name="type" value="school"><div class="r-opt-b"><span class="r-opt-t" style="color:#92400E">🎓 スクール・コミュニティ運営</span><span class="r-opt-d">生徒・フォロワーへの紹介パートナーとして</span></div></label>
-            </div>
-          </div>
-          <button type="submit" class="btn-submit">無料でウェイティングリストに登録する →</button>
-        </form>
+        <a href="https://asp.jcity.co.jp/FORM/?K=infotop_IR4TflTj" target="_blank" rel="noopener" class="btn-submit btn-ripple" style="display:flex;align-items:center;justify-content:center;text-decoration:none">無料でウェイティングリストに登録する →</a>
         <div class="fm"><span>完全無料</span><span>1分で完了</span><span>いつでも退会可能</span></div>
-      </div>
-      <div id="thanks">
-        <div class="ty-ico">🎉</div>
-        <div class="ty-ttl">登録ありがとうございます！</div>
-        <p class="ty-txt">リリース時に真っ先にご連絡します。<br>先行特典をお楽しみに。<br><br><strong style="color:var(--blue)">AI BASE チーム一同</strong></p>
       </div>
     </div>
   </div>
@@ -1945,33 +1919,6 @@
     });
   });
 
-
-  /* ── Form submit ── */
-  document.getElementById('wl-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = e.target.querySelector('.btn-submit');
-    btn.disabled = true;
-    btn.textContent = '登録中...';
-
-    const name  = document.querySelector('#wl-form input[type="text"]').value;
-    const email = document.getElementById('email-input').value;
-    const type  = document.querySelector('input[name="type"]:checked')?.value;
-
-    try {
-      const res = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, type })
-      });
-      if (!res.ok) throw new Error('error');
-      document.getElementById('form-state').style.display = 'none';
-      document.getElementById('thanks').classList.add('show');
-    } catch {
-      btn.disabled = false;
-      btn.textContent = '無料でウェイティングリストに登録する →';
-      alert('送信に失敗しました。しばらく経ってからお試しください。');
-    }
-  });
 
   /* ── Smooth scroll ── */
   document.querySelectorAll('a[href^="#"]').forEach(a => {
@@ -2208,53 +2155,6 @@
     window.addEventListener('resize', ()=>{ if(started){ setup(); } });
   })();
 
-  /* ── Waitlist リアルタイムカウントダウン ── */
-  (async function() {
-    const LIMIT = 300;
-
-    try {
-      const res = await fetch('/api/count', { cache: 'no-store' });
-      const data = await res.json();
-      const registered = data.registered ?? 0;
-      const remaining  = data.remaining ?? Math.max(0, LIMIT - registered);
-      const pct        = data.pct ?? Math.min(100, Math.round((registered / LIMIT) * 100));
-
-      const numEl  = document.getElementById('remaining-count');
-      const barEl  = document.getElementById('prog-fill-bar');
-      const noteEl = document.getElementById('prog-note-text');
-
-      if (numEl) {
-        /* カウントアップアニメーション */
-        let cur = 0;
-        const step = Math.ceil(remaining / 40);
-        const timer = setInterval(() => {
-          cur = Math.min(cur + step, remaining);
-          numEl.textContent = cur;
-          if (cur >= remaining) clearInterval(timer);
-        }, 30);
-      }
-      if (barEl) barEl.style.width = pct + '%';
-      if (noteEl) {
-        if (remaining <= 0) {
-          noteEl.textContent = '※ 先着特典の受付は終了しました';
-        } else if (remaining <= 30) {
-          noteEl.textContent = `残り ${remaining} 名 · お早めに！`;
-          noteEl.style.color = '#F97316';
-          noteEl.style.fontWeight = '700';
-        } else {
-          noteEl.textContent = `残り ${remaining} 名 · ${registered} 名が登録済み`;
-        }
-      }
-    } catch(e) {
-      /* フォールバック: 静的表示 */
-      const numEl = document.getElementById('remaining-count');
-      const noteEl = document.getElementById('prog-note-text');
-      if (numEl) numEl.textContent = '300';
-      if (noteEl) noteEl.textContent = '残り枠わずか · 締め切り近日発表';
-      const barEl = document.getElementById('prog-fill-bar');
-      if (barEl) barEl.style.width = '73%';
-    }
-  })();
 </script>
 </body>
 </html>
