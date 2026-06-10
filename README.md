@@ -1,43 +1,42 @@
 # AI BASE — ウェイティングリスト LP
 
 先着300名限定特典付きウェイティングリストのランディングページ。
-元は Vercel + Supabase。本リポジトリは **Cloudflare Workers（静的アセット + GitHub 連携ビルド）** 向けに再構成したもの。
+元は Vercel + Supabase だったが、元 Supabase は**紛失したアカウント所有**で書き込めないため、保存先を **Cloudflare D1** に変更。全体を Cloudflare Workers（静的アセット + API）で完結させている。外部アカウント・トークン・APIキーは不要。
 
 ## 構成
 
 | パス | 役割 |
 |---|---|
-| `public/waitlist.html` | 本体（自己完結の静的 LP。元の `/waitlist.html` と同一） |
+| `public/waitlist.html` | 本体（自己完結の静的 LP） |
 | `public/index.html` | ルートを `waitlist.html` にリダイレクト |
-| `src/index.js` | Worker 本体。`POST /api/waitlist` を Supabase に保存、それ以外は静的アセットを配信 |
-| `wrangler.toml` | 設定（アセットディレクトリ・環境変数）。ビルドはこれを自動で読む |
+| `src/index.js` | Worker 本体（API + アセット配信） |
+| `wrangler.toml` | 設定（アセット / D1 バインディング / 上限値） |
 
-- 残り枠カウンターは Supabase の anon キーで直接読み取り（変更不要）。
-- フォーム送信は `/api/waitlist`（Worker）経由で service_role キーを使い保存（RLS をバイパス）。
+### API
+- `POST /api/waitlist` … `{name, email, type}` を D1 に保存。同一メールは冪等（二重登録しても1件）。
+- `GET /api/count` … `{registered, remaining, limit, pct}` を返す。カウンター表示用。メールアドレスは公開しない。
 
-## デプロイ（Cloudflare、GitHub 連携）
+### データベース（Cloudflare D1）
+- DB名 `firstpen-waitlist` / binding `DB`
+- テーブル `waitlist_registrations(id, name, email UNIQUE, type, created_at)`
 
-GitHub にこのリポジトリが push 済みであること。Cloudflare の Worker プロジェクトを本リポジトリに接続すると、`wrangler.toml` を読んで自動でビルド・配信される。
+## デプロイ
 
-**唯一の手動設定：シークレットを1つ登録**
-Cloudflare ダッシュボード > 対象 Worker > **Settings > Variables and Secrets** > **Add** で：
+```bash
+wrangler deploy
+```
 
-- 種別 **Secret**、名前 `SUPABASE_SERVICE_ROLE_KEY`、値 = Supabase の **Settings > API > service_role** キー（**秘密。リポジトリ・wrangler.toml には絶対に入れない**）
-
-`SUPABASE_URL` は `wrangler.toml` の `[vars]` に記載済み（公開可）。
-
-登録後に再デプロイ（push か Deployments から Retry）すれば、フォーム送信 → `waitlist_registrations` に保存される。
+- 公開 URL: https://firstpen-waitlist-api.soga-naoya.workers.dev/waitlist
+- 先着上限は `wrangler.toml` の `[vars] WAITLIST_LIMIT` で変更可。
 
 ## ローカル確認（任意）
 
 ```bash
-npm i -g wrangler
-# service_role キーをローカルに渡す
-echo 'SUPABASE_SERVICE_ROLE_KEY=...' > .dev.vars   # .gitignore 済み
-wrangler dev
+wrangler dev          # ローカル D1 を使う
 ```
 
 ## メモ
 
-- `waitlist_registrations` は anon に SELECT 許可済み（カウンター用）。INSERT は service_role 経由のみ。列は `name` / `email` / `type`。
-- 自動連携時に D1 データベース等が勝手に紐づくことがあるが、本プロジェクトでは未使用。`wrangler.toml` の内容が優先されるため無視してよい。
+- 旧 Worker に残っていた未使用シークレット（`SUPABASE_SERVICE_ROLE_KEY` / `SENDGRID_API_KEY` / `ADMIN_PASS` 等）は本コードでは未使用。削除する場合: `wrangler secret delete <NAME>`。
+- 元の構成には SendGrid によるメール送信・管理ログインもあった模様（今回は未実装）。必要なら別途追加。
+- 登録データの確認: `wrangler d1 execute firstpen-waitlist --remote --command "SELECT * FROM waitlist_registrations;"`

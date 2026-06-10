@@ -2210,19 +2210,14 @@
 
   /* ── Waitlist リアルタイムカウントダウン ── */
   (async function() {
-    const SUPABASE_URL  = 'https://hfknwufsphmwnzryveyx.supabase.co';
-    const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhma253dWZzcGhtd256cnl2ZXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMjYzOTEsImV4cCI6MjA5MTgwMjM5MX0.xpChWPgq4j19xIYv_ncnvOh0CjLuPVl5ihq1wp42XMY';
     const LIMIT = 300;
 
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/waitlist_registrations`, {
-        method: 'HEAD',
-        headers: { 'apikey': SUPABASE_KEY, 'Prefer': 'count=exact' }
-      });
-      const range = res.headers.get('content-range') || '*/0';
-      const registered = parseInt(range.split('/')[1]) || 0;
-      const remaining  = Math.max(0, LIMIT - registered);
-      const pct        = Math.min(100, Math.round((registered / LIMIT) * 100));
+      const res = await fetch('/api/count', { cache: 'no-store' });
+      const data = await res.json();
+      const registered = data.registered ?? 0;
+      const remaining  = data.remaining ?? Math.max(0, LIMIT - registered);
+      const pct        = data.pct ?? Math.min(100, Math.round((registered / LIMIT) * 100));
 
       const numEl  = document.getElementById('remaining-count');
       const barEl  = document.getElementById('prog-fill-bar');

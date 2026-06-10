@@ -1,25 +1,41 @@
-// Cloudflare Worker（静的アセット + APIルート）
-// - /waitlist.html, /, その他の静的ファイル → public/ のアセットを配信（assetsが優先処理）
-// - POST /api/waitlist → Supabase に保存（service_role キーで RLS をバイパス）
+// Cloudflare Worker（静的アセット + API）— 保存先は Cloudflare D1
+// - GET  /              , /waitlist.html など … public/ の静的アセットを配信
+// - POST /api/waitlist  … 登録を D1 に保存
+// - GET  /api/count     … 登録数・残り枠を返す（カウンター用。メールは公開しない）
 //
-// 環境変数:
-//   SUPABASE_URL                 wrangler.toml の [vars] に記載
-//   SUPABASE_SERVICE_ROLE_KEY    ダッシュボードの Secret（または `wrangler secret put`）
+// バインディング（wrangler.toml）:
+//   DB              D1 データベース
+//   ASSETS          静的アセット
+//   WAITLIST_LIMIT  先着上限（文字列）
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
   });
+
+function getLimit(env) {
+  const n = parseInt(env.WAITLIST_LIMIT, 10);
+  return Number.isFinite(n) && n > 0 ? n : 300;
+}
+
+async function handleCount(env) {
+  const limit = getLimit(env);
+  const row = await env.DB.prepare(
+    'SELECT COUNT(*) AS c FROM waitlist_registrations'
+  ).first();
+  const registered = row?.c ?? 0;
+  const remaining = Math.max(0, limit - registered);
+  const pct = Math.min(100, Math.round((registered / limit) * 100));
+  return json({ registered, remaining, limit, pct });
+}
 
 async function handleWaitlist(request, env) {
   if (request.method !== 'POST') {
     return json({ error: 'method_not_allowed' }, 405);
-  }
-  const supabaseUrl = (env.SUPABASE_URL || '').trim().replace(/\/$/, '');
-  const serviceKey = (env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-  if (!supabaseUrl || !serviceKey) {
-    return json({ error: 'server_not_configured' }, 500);
   }
 
   let body;
@@ -29,28 +45,24 @@ async function handleWaitlist(request, env) {
     return json({ error: 'invalid_json' }, 400);
   }
 
-  const name = (body.name || '').toString().trim();
-  const email = (body.email || '').toString().trim();
-  const type = (body.type || '').toString().trim();
+  const name = (body.name || '').toString().trim().slice(0, 200);
+  const email = (body.email || '').toString().trim().slice(0, 320);
+  const type = (body.type || '').toString().trim().slice(0, 50);
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: 'invalid_email' }, 400);
   }
 
-  const res = await fetch(`${supabaseUrl}/rest/v1/waitlist_registrations`, {
-    method: 'POST',
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify({ name, email, type }),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text();
-    return json({ error: 'db_error', detail }, 502);
+  try {
+    // 同一メールの二重登録は無視（冪等）
+    await env.DB.prepare(
+      'INSERT INTO waitlist_registrations (name, email, type) VALUES (?, ?, ?) ' +
+        'ON CONFLICT(email) DO NOTHING'
+    )
+      .bind(name, email, type)
+      .run();
+  } catch (e) {
+    return json({ error: 'db_error', detail: String(e) }, 502);
   }
 
   return json({ ok: true });
@@ -62,8 +74,10 @@ export default {
     if (url.pathname === '/api/waitlist') {
       return handleWaitlist(request, env);
     }
-    // それ以外は静的アセットへフォールバック
-    // （通常はアセットが Worker より先に配信されるため、ここに来るのは未マッチ時のみ）
+    if (url.pathname === '/api/count') {
+      return handleCount(env);
+    }
+    // それ以外は静的アセットへ
     return env.ASSETS.fetch(request);
   },
 };

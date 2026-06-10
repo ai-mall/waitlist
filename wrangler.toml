@@ -7,9 +7,11 @@ compatibility_date = "2026-06-10"
 directory = "./public"
 binding = "ASSETS"
 
-# 公開してよい値はここに（anonキー相当・SupabaseのURL）。
-[vars]
-SUPABASE_URL = "https://hfknwufsphmwnzryveyx.supabase.co"
+# 保存先データベース（Cloudflare D1）。外部キー不要、Workerからバインディングで直結。
+[[d1_databases]]
+binding = "DB"
+database_name = "firstpen-waitlist"
+database_id = "db8554eb-6085-4973-a301-37b9cee64054"
 
-# 秘密の SUPABASE_SERVICE_ROLE_KEY はここには書かず、
-# ダッシュボードの「Secret」または `wrangler secret put` で登録する。
+[vars]
+WAITLIST_LIMIT = "300"
