@@ -1,0 +1,15 @@
+name = "firstpen-waitlist-api"
+main = "src/index.js"
+compatibility_date = "2026-06-10"
+
+# 静的ファイル（LP）。/ や /waitlist.html はここから配信される。
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# 公開してよい値はここに（anonキー相当・SupabaseのURL）。
+[vars]
+SUPABASE_URL = "https://hfknwufsphmwnzryveyx.supabase.co"
+
+# 秘密の SUPABASE_SERVICE_ROLE_KEY はここには書かず、
+# ダッシュボードの「Secret」または `wrangler secret put` で登録する。

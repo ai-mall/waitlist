@@ -1,41 +1,43 @@
 # AI BASE — ウェイティングリスト LP
 
 先着300名限定特典付きウェイティングリストのランディングページ。
-元は Vercel + Supabase で構築。本リポジトリは **Cloudflare Pages（GitHub 連携）** 向けに再構成したもの。
+元は Vercel + Supabase。本リポジトリは **Cloudflare Workers（静的アセット + GitHub 連携ビルド）** 向けに再構成したもの。
 
 ## 構成
 
-| ファイル | 役割 |
+| パス | 役割 |
 |---|---|
-| `waitlist.html` | 本体（自己完結の静的 LP。元の `/waitlist.html` と同一） |
-| `index.html` | ルートアクセスを `waitlist.html` にリダイレクト |
-| `functions/api/waitlist.js` | Cloudflare Pages Function。`POST /api/waitlist` を受け Supabase に保存 |
+| `public/waitlist.html` | 本体（自己完結の静的 LP。元の `/waitlist.html` と同一） |
+| `public/index.html` | ルートを `waitlist.html` にリダイレクト |
+| `src/index.js` | Worker 本体。`POST /api/waitlist` を Supabase に保存、それ以外は静的アセットを配信 |
+| `wrangler.toml` | 設定（アセットディレクトリ・環境変数）。ビルドはこれを自動で読む |
 
-フロントの残り枠カウンターは Supabase の anon キーで直接読み取り（変更不要）。
-フォーム送信は `/api/waitlist`（上記 Function）経由で service_role キーを使い保存（RLS をバイパス）。
+- 残り枠カウンターは Supabase の anon キーで直接読み取り（変更不要）。
+- フォーム送信は `/api/waitlist`（Worker）経由で service_role キーを使い保存（RLS をバイパス）。
 
-## Cloudflare Pages へのデプロイ手順
+## デプロイ（Cloudflare、GitHub 連携）
 
-1. このリポジトリを GitHub に push 済みであること。
-2. Cloudflare ダッシュボード > **Workers & Pages** > **Create** > **Pages** > **Connect to Git**。
-3. 本リポジトリを選択。ビルド設定:
-   - **Framework preset**: None
-   - **Build command**: （空欄）
-   - **Build output directory**: `/`（リポジトリのルート）
-4. **Settings > Environment variables** に以下を追加（Production / Preview 両方）:
-   - `SUPABASE_URL` = `https://hfknwufsphmwnzryveyx.supabase.co`
-   - `SUPABASE_SERVICE_ROLE_KEY` = Supabase ダッシュボード **Settings > API** の **service_role** キー（**秘密。リポジトリには絶対に入れない**）
-5. デプロイ後、`https://<project>.pages.dev/waitlist.html` で表示確認。フォーム送信 → Supabase の `waitlist_registrations` に行が増えることを確認。
+GitHub にこのリポジトリが push 済みであること。Cloudflare の Worker プロジェクトを本リポジトリに接続すると、`wrangler.toml` を読んで自動でビルド・配信される。
+
+**唯一の手動設定：シークレットを1つ登録**
+Cloudflare ダッシュボード > 対象 Worker > **Settings > Variables and Secrets** > **Add** で：
+
+- 種別 **Secret**、名前 `SUPABASE_SERVICE_ROLE_KEY`、値 = Supabase の **Settings > API > service_role** キー（**秘密。リポジトリ・wrangler.toml には絶対に入れない**）
+
+`SUPABASE_URL` は `wrangler.toml` の `[vars]` に記載済み（公開可）。
+
+登録後に再デプロイ（push か Deployments から Retry）すれば、フォーム送信 → `waitlist_registrations` に保存される。
 
 ## ローカル確認（任意）
 
 ```bash
 npm i -g wrangler
-# .dev.vars に SUPABASE_URL と SUPABASE_SERVICE_ROLE_KEY を記載（.gitignore 済み）
-wrangler pages dev .
+# service_role キーをローカルに渡す
+echo 'SUPABASE_SERVICE_ROLE_KEY=...' > .dev.vars   # .gitignore 済み
+wrangler dev
 ```
 
 ## メモ
 
-- `waitlist_registrations` テーブルは anon に SELECT を許可済み（カウンター用）。INSERT は service_role 経由のみ。
-- service_role キーは Cloudflare の環境変数にのみ保存し、コードや Git には含めないこと。
+- `waitlist_registrations` は anon に SELECT 許可済み（カウンター用）。INSERT は service_role 経由のみ。列は `name` / `email` / `type`。
+- 自動連携時に D1 データベース等が勝手に紐づくことがあるが、本プロジェクトでは未使用。`wrangler.toml` の内容が優先されるため無視してよい。

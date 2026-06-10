@@ -1,10 +1,10 @@
-// Cloudflare Pages Function — POST /api/waitlist
-// 元の Vercel サーバーレス関数と同等。フロントの fetch('/api/waitlist') をそのまま受け、
-// Supabase の service_role キーで waitlist_registrations テーブルに保存する（RLS をバイパス）。
+// Cloudflare Worker（静的アセット + APIルート）
+// - /waitlist.html, /, その他の静的ファイル → public/ のアセットを配信（assetsが優先処理）
+// - POST /api/waitlist → Supabase に保存（service_role キーで RLS をバイパス）
 //
-// 必要な環境変数（Cloudflare Pages の Settings > Environment variables で設定）:
-//   SUPABASE_URL                例: https://hfknwufsphmwnzryveyx.supabase.co
-//   SUPABASE_SERVICE_ROLE_KEY   Supabase ダッシュボード Settings > API の service_role キー（秘密）
+// 環境変数:
+//   SUPABASE_URL                 wrangler.toml の [vars] に記載
+//   SUPABASE_SERVICE_ROLE_KEY    ダッシュボードの Secret（または `wrangler secret put`）
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -12,7 +12,10 @@ const json = (data, status = 200) =>
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
   });
 
-export async function onRequestPost({ request, env }) {
+async function handleWaitlist(request, env) {
+  if (request.method !== 'POST') {
+    return json({ error: 'method_not_allowed' }, 405);
+  }
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     return json({ error: 'server_not_configured' }, 500);
   }
@@ -50,4 +53,15 @@ export async function onRequestPost({ request, env }) {
 
   return json({ ok: true });
 }
-// POST 以外のメソッドは Cloudflare Pages が自動的に 405 を返す。
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/waitlist') {
+      return handleWaitlist(request, env);
+    }
+    // それ以外は静的アセットへフォールバック
+    // （通常はアセットが Worker より先に配信されるため、ここに来るのは未マッチ時のみ）
+    return env.ASSETS.fetch(request);
+  },
+};
